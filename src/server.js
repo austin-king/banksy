@@ -9,15 +9,15 @@ require('dotenv').config();
 async function main () {
 
   const db = await initDatabase()
-  await db.migrate.latest()
-  await db.seed.run()
+  // await db.migrate.latest()
+  // await db.seed.run()
 
   const app = express();
   const insults = fs.readFileSync('data/insults.csv', 'utf8').split(',')
 
   app.use(bodyParser.urlencoded({ extended: false }));
   // text handler
-  app.post('/sms', async function (req, res) {
+  app.post('/', async function (req, res) {
     // parse args
     const methodName = req.body.Body.split('\n')[0].trim().toLowerCase()
     const args = textToJson(req.body.Body.toLowerCase())
@@ -30,7 +30,7 @@ async function main () {
         resp = await getBudgets(db)
     } else {
       // defaults to adding tx
-      resp = await addTransaction(req.body.Body.toLowerCase(), db)
+      resp = await addTransaction(req.body.Body.toLowerCase(), db, insults)
     }
     
     // text me back!
@@ -41,14 +41,14 @@ async function main () {
   });
 
   // start server
-  http.createServer(app).listen(1337, () => {
-      console.log('Express server listening on port 1337');
+  http.createServer(app).listen(8080, () => {
+      console.log('Express server listening on port 8080');
   });
 }
 
 // transaction management
 
-async function addTransaction(args, db) {
+async function addTransaction(args, db, insults) {
   // build tx 
   let tx = {}
   const lines = args.split('\n')
@@ -64,7 +64,7 @@ async function addTransaction(args, db) {
   // write to db
   try {
     await db('transactions').insert(tx)
-    return 'success'
+    return `Submitted, you ${insults[Math.floor(Math.random() * insults.length)]}!`
   } catch (e) {
     if (e.toString().endsWith('SQLITE_CONSTRAINT: NOT NULL constraint failed: transactions.category_id')) {
       return `Couldn't match to an existing budget`
